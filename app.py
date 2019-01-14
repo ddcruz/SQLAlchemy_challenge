@@ -42,10 +42,10 @@ def welcome():
         f"Available Routes:<br/>"
         f"<a href = 'http://127.0.0.1:5000/api/v1.0/stations'> /api/v1.0/stations</a> Return a list of all stations<br/>"
         f"<a href = 'http://127.0.0.1:5000/api/v1.0/precipitation'> /api/v1.0/precipitation</a> Return a list of the last 12 months of precipitation data of the most active station including the date and prcp<br/>"
-        #f"/api/v1.0/precipitation/station Return a list of the last 12 months of precipitation data of the requested station including the date and prcp<br/>"        
+        f"<a href = 'http://127.0.0.1:5000/api/v1.0/precipitation/USC00519397'> /api/v1.0/precipitation/station</a> Return a list of the last 12 months of precipitation data of the requested station including the date and prcp<br/>"        
         f"<a href = 'http://127.0.0.1:5000/api/v1.0/tobs'> /api/v1.0/tobs</a> Return a list of the dates and temperature observations from a year from the latest data point of the most active station<br/>"
-        #f"/api/v1.0/start<br/>"
-        #f"/api/v1.0/start/end<br/>"
+        f"<a href = 'http://127.0.0.1:5000/api/v1.0/2017-06-06'> /api/v1.0/start </a> Return a JSON list of the minimum temperature, the average temperature, and the max temperature from a given start date<br/>"        
+        f"<a href = 'http://127.0.0.1:5000/api/v1.0/2017-06-06/2017-06-20'> /api/v1.0/start/end </a> Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start-end range<br/>"
     )
 
 
@@ -149,7 +149,6 @@ def precipitation_for_station(station):
         ,'%Y-%m-%d')
     ceiling_date = date(floor_date.year -1, floor_date.month, floor_date.day).strftime('%Y-%m-%d')
 
-
     # Query precipitation data
     sel = [Measurement.station, Station.name, Measurement.date, Measurement.prcp]
     results = session.query(*sel).\
@@ -222,6 +221,88 @@ def tobs():
         #tobs_dict["station_name"] = row.name
         tobs_dict["date"] = row.date
         tobs_dict["tobs"] = row.tobs
+        all_rows.append(tobs_dict)
+
+    return jsonify(all_rows)
+
+
+
+@app.route("/api/v1.0/<start_date>")
+def min_avg_max_start(start_date):
+
+    engine = create_engine("sqlite:///Resources/hawaii.sqlite")
+
+    # reflect an existing database into a new model
+    Base = automap_base()
+    # reflect the tables
+    Base.prepare(engine, reflect=True)
+
+    # Save references to each table
+    Measurement = Base.classes.measurement
+    #Station = Base.classes.station
+
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    """Return a JSON list of the minimum temperature, the average temperature, and the max temperature from a given start date"""
+    print(start_date)
+
+    # Query tobs data
+    sel = [func.min(Measurement.tobs).label('tmin')
+        , func.avg(Measurement.tobs).label('tavg')
+        , func.max(Measurement.tobs).label('tmax')]
+    results = session.query(*sel).\
+        filter(Measurement.date >= start_date).\
+        all()
+    
+    # Create a dictionary from the row data and append to a list of all_passengers
+    all_rows = []
+    for row in results:
+        tobs_dict = {}
+        tobs_dict["tmin"] = row.tmin
+        tobs_dict["tavg"] = row.tavg
+        tobs_dict["tmax"] = row.tmax
+        all_rows.append(tobs_dict)
+
+    return jsonify(all_rows)
+
+
+@app.route("/api/v1.0/<start_date>/<end_date>")
+def min_avg_max_start_end(start_date, end_date):
+
+    engine = create_engine("sqlite:///Resources/hawaii.sqlite")
+
+    # reflect an existing database into a new model
+    Base = automap_base()
+    # reflect the tables
+    Base.prepare(engine, reflect=True)
+
+    # Save references to each table
+    Measurement = Base.classes.measurement
+    #Station = Base.classes.station
+
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    """Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start-end range"""
+    print(start_date, end_date)
+    
+    # Query tobs data
+    sel = [func.min(Measurement.tobs).label('tmin')
+        , func.avg(Measurement.tobs).label('tavg')
+        , func.max(Measurement.tobs).label('tmax')]
+    results = session.query(*sel).\
+        filter(Measurement.date >= start_date).\
+        filter(Measurement.date <= end_date).\
+        all()
+    
+    # Create a dictionary from the row data and append to a list of all_passengers
+    all_rows = []
+    for row in results:
+        tobs_dict = {}
+        tobs_dict["tmin"] = row.tmin
+        tobs_dict["tavg"] = row.tavg
+        tobs_dict["tmax"] = row.tmax
         all_rows.append(tobs_dict)
 
     return jsonify(all_rows)
